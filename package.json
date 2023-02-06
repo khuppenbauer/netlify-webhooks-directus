@@ -3,25 +3,19 @@
   "version": "1.0.0",
   "author": "Kerstin Huppenbauer",
   "license": "MIT",
+  "devDependencies": {
+    "netlify-cli": "12.2.9",
+    "prisma": "^4.7.1"
+  },
   "scripts": {
-    "start": "netlify-lambda serve src/functions",
-    "build": "netlify-lambda build src/functions",
-    "lint": "yarn run eslint src/*.js"
+    "build": "prisma generate",
+    "dev": "netlify dev"
   },
   "dependencies": {
-    "dotenv": "^16.0.3",
-    "encoding": "^0.1.13",
-    "netlify-lambda": "^2.0.15"
-  },
-  "devDependencies": {
-    "babel-eslint": "^10.1.0",
-    "eslint-config-airbnb": "^19.0.4",
-    "npm-run-all": "^4.1.5"
-  },
-  "browserslist": [
-    ">0.2%",
-    "not dead",
-    "not ie <= 11",
-    "not op_mini all"
-  ]
+    "@prisma/client": "^4.7.1",
+    "@turf/turf": "^6.5.0",
+    "geojson-flatten": "^1.1.1",
+    "geojson-reducer": "^1.0.3",
+    "uuid": "^9.0.0"
+  }
 }

@@ -1,8 +1,10 @@
 const { v4: uuidv4 } = require('uuid');
 const { PrismaClient } = require('@prisma/client')
 const turf = require('@turf/turf');
-const geojsonReducer = require('geojson-reducer');
 const prisma = new PrismaClient()
+
+const name = 'Saarland';
+const reduce = 50;
 
 exports.handler = async (event, context, callback) => {
   try {
@@ -12,12 +14,12 @@ exports.handler = async (event, context, callback) => {
         string_agg(plz, ',') as plz
       FROM
         dimb_ig_ms_teams
-      WHERE bundesland = 'Baden-Württemberg'
-      AND dimb_ig != 'N.N.'
+      WHERE dimb_ig != 'N.N.'
+      AND bundesland = ${name}
       GROUP BY
         dimb_ig;
     `;
-    await prisma.dimb_ig.deleteMany();
+    // await prisma.dimb_ig.deleteMany();
     const geoJson = [];
     await result.reduce(async (lastPromise, item) => {
       const accum = await lastPromise;
@@ -35,27 +37,42 @@ exports.handler = async (event, context, callback) => {
       };
       try {
         geometry = turf.dissolve(geometry);
-        geometry = geojsonReducer.reduceGeoJson(JSON.stringify(geometry));
         geometry.features.forEach((geometryItem) => {
+          const { geometry: { coordinates }} = geometryItem;
+          const coords = [];
+          coordinates.forEach((coordinateItem, index) => {
+            if (coordinateItem.length > 10) {
+              const coordItem = [];
+              coordinateItem.map((coordinate, index) => {
+                if (index % reduce === 0) {
+                  coordItem.push(coordinate);
+                }
+              })
+              coordItem.push(coordItem[0]);
+              coords.push(coordItem);
+            }
+          })
+          geometryItem.geometry.coordinates = coords;
+          geometryItem.properties.name = dimb_ig;
           geoJson.push(geometryItem);
         })
-        await prisma.dimb_ig.create({
+        /* await prisma.dimb_ig.create({
           data: {
             id: uuidv4(),
             name: dimb_ig,
             geometry,
           }
-        });
+        }); */
         console.log(dimb_ig);
       } catch (error) {
-        console.log(error);
+        console.log([dimb_ig, error]);
       }
       return [...accum, items];
     }, Promise.resolve([]));
     await prisma.dimb_ig.create({
       data: {
         id: uuidv4(),
-        name: 'DIMB',
+        name: `DIMB - ${name}`,
         geometry: {
           "type": "FeatureCollection",
           "features": geoJson,
@@ -65,7 +82,7 @@ exports.handler = async (event, context, callback) => {
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(result)
+      body: JSON.stringify(geoJson)
     }
   } catch (error) {
     console.error(error)
